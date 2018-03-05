@@ -170,25 +170,29 @@ public class TaskTransfer {
             targetQueue = exeQueue;
         }
 
+        // todo read 是否开启背压控制
         if (isBackpressureEnable) {
+            // 获得背压状态
             Boolean backpressureStatus = targetTaskBackpressureStatus.get(taskId);
             if (backpressureStatus == null) {
                 backpressureStatus = false;
                 targetTaskBackpressureStatus.put(taskId, false);
             }
-
+            // 如果是背压状态
             if (backpressureStatus) {
+                // 如果的容量比低水位大，一直休眠1毫秒
                 while (targetQueue.pctFull() > lowMark) {
                     JStormUtils.sleepMs(1);
                 }
                 targetTaskBackpressureStatus.put(taskId, false);
                 targetQueue.publish(tuple);
-            } else {
+            } else {// 如果还不是背压状态
                 targetQueue.publish(tuple);
                 if (targetQueue.pctFull() > highMark) {
                     targetTaskBackpressureStatus.put(taskId, true);
                 }
             }
+            // 整体的话，就类似一个缓慢滑动，那么抖动就不会那么剧烈
         } else {
             targetQueue.publish(tuple);
         }
